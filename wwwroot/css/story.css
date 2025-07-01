@@ -1,0 +1,40 @@
+﻿body {
+    background-color: #117864;
+}
+
+#nav {
+    display: flex;
+    justify-content: space-between;
+    padding-bottom: 0;
+    height: 100px;
+    width: 90%;
+    align-items: center;
+    position: absolute;
+    top: 0px;
+    background-color: #ffffff;
+    border-radius: 10px;
+}
+
+.panel {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+
+.canvas-panel {
+    background-color: white;
+    width: 100%;
+    height: 200px;
+    max-width: 400px;
+    border: 1px solid black;
+    box-sizing: border-box;
+}
+
+.description {
+    background-color: white;
+    width: 100%;
+    height: 100px;
+    max-width: 400px;
+    border: 1px solid black;
+    box-sizing: border-box;
+}

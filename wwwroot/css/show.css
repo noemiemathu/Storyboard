@@ -1,0 +1,10 @@
+﻿body {
+    background-color: #117864;
+}
+
+#balk {
+    width: 60px;
+    height: 600px;
+    background-color: white;
+    position: absolute;
+}
