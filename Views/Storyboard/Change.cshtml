@@ -1,0 +1,255 @@
+﻿@model Story
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canvas Vormen Verplaatsen</title>
+    <link rel="stylesheet" href="~/css/change.css" />
+    <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+    <script src="https://unpkg.com/konva@9/konva.min.js"></script>
+</head>
+<body onload="loadData()">
+    <div class="nav">
+        <button id="backButton">Terug</button>
+        <h3>@Model.Title</h3>
+        <button onclick="undo()">Undo</button>
+        <button onclick="redo()">Redo</button>
+        <button onclick="remove()">Weg</button>
+        <button type="submit">img</button>
+    </div>
+    <br />
+
+    <div class="editor">
+        <div class="place">
+            <p>Maak een omschrijving van de scène:</p>
+            <textarea name="omschrijving" id="omschrijving" rows="12" cols="30" placeholder="Omschrijving"></textarea>
+            <p>Kies een kleur:</p>
+            <input type="color" id="color" value="#7ff01d" />
+        </div>
+
+        <div class="panel" id="canvas"></div>
+
+        <div class="buttons">
+            <button onclick="draw('circle')">Cirkel</button>
+            <button onclick="draw('rectangle')">Rechthoek</button>
+            <button onclick="draw('triangle')">Driehoek</button>
+            <button onclick="color()">Achtergrond</button>
+            <button onclick="saveData()">Opslaan</button>
+        </div>
+    </div>
+    <div class="image"></div>
+
+    <script>
+        var panel = document.getElementById("canvas");
+        var colorPicker = document.getElementById("color");
+        const savedDiscription = document.getElementById('omschrijving');
+        let undoStack = [];
+        let redoStack = [];
+
+        function pushToUndoStack(action) {
+            undoStack.push(action);
+            redoStack = []; // Clear the redo stack on new action
+        }
+
+        function pushToRedoStack(action) {
+            redoStack.push(action);
+        }
+
+        function getQueryParams() {
+            const params = {};
+            const queryString = window.location.search;
+            const urlParams = new URLSearchParams(queryString);
+            for (const [key, value] of urlParams.entries()) {
+                params[key] = value;
+            }
+            return params;
+        }
+
+        function color() {
+            panel.style.backgroundColor = colorPicker.value;
+        }
+
+        function drawElement(type, color, height, width, x, y) {
+            var el = document.createElement('div');
+            el.className = 'panel-item panel-' + type;
+            el.style.cssText = 'background-color: ' + color;
+            el.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+            el.style.width = width + 'px';
+            el.style.height = height + 'px';
+            el.setAttribute('data-x', x);
+            el.setAttribute('data-y', y);
+            el.dataset.elType = type;
+            el.dataset.bgColor = color;
+            return el;
+        }
+
+        function draw(type) {
+            var el = drawElement(type, colorPicker.value, 100, 100, 0, 0);
+            panel.appendChild(el);
+            pushToUndoStack({ type: 'draw', element: el });
+
+            // Add interaction to the new element
+            interactElement(el);
+        }
+
+        // Function to add interactions to an element
+        function interactElement(el) {
+            interact(el)
+                .draggable({
+                    inertia: true,
+                    modifiers: [
+                        interact.modifiers.restrictRect({
+                            restriction: 'parent',
+                            endOnly: true
+                        })
+                    ],
+                    autoScroll: true,
+                    listeners: {
+                        move: dragMoveListener
+                    }
+                })
+                .resizable({
+                    edges: { left: true, right: true, bottom: true, top: true },
+                    listeners: {
+                        move(event) {
+                            var target = event.target;
+                            var x = (parseFloat(target.getAttribute('data-x')) || 0);
+                            var y = (parseFloat(target.getAttribute('data-y')) || 0);
+
+                            target.style.width = event.rect.width + 'px';
+                            target.style.height = event.rect.height + 'px';
+
+                            x += event.deltaRect.left;
+                            y += event.deltaRect.top;
+
+                            target.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+                            target.setAttribute('data-x', x);
+                            target.setAttribute('data-y', y);
+                        }
+                    },
+                    modifiers: [
+                        interact.modifiers.restrictEdges({
+                            outer: 'parent'
+                        })
+                    ],
+                    inertia: true
+                });
+        }
+
+        function dragMoveListener(event) {
+            var target = event.target;
+            var x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx;
+            var y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy;
+
+            pushToUndoStack({ type: 'move', element: target, prevX: target.getAttribute('data-x'), prevY: target.getAttribute('data-y') });
+
+            target.style.transform = 'translate(' + x + 'px, ' + y + 'px)';
+            target.setAttribute('data-x', x);
+            target.setAttribute('data-y', y);
+        }
+
+        window.dragMoveListener = dragMoveListener;
+
+        function saveData() {
+            const panelItems = document.querySelectorAll('.panel-item');
+            const elementenPosities = [];
+
+            panelItems.forEach(function (item) {
+                const rec = item.getBoundingClientRect();
+
+                const positie = {
+                    x: item.dataset.x,
+                    y: item.dataset.y,
+                    width: rec.width,
+                    height: rec.height,
+                    type: item.dataset.elType,
+                    color: item.dataset.bgColor
+                };
+
+                elementenPosities.push(positie);
+            });
+
+            const omschrijving = savedDiscription.value;
+
+            const data = {
+                omschrijving: omschrijving,
+                achtergrondkleur: panel.style.backgroundColor,  // Voeg de achtergrondkleur toe
+                elementen: elementenPosities
+            };
+
+            const json = JSON.stringify(data);
+            const params = getQueryParams();
+            localStorage.setItem(`SAVE_GAME_DATA_${@Model.SelectedPanel}`, json);
+        }
+
+        function loadData() {
+            const params = getQueryParams();
+            const data = localStorage.getItem(`SAVE_GAME_DATA_${@Model.SelectedPanel}`);
+
+            if (!data) return;
+
+            const parsedData = JSON.parse(data); // Zorg ervoor dat parsedData correct is gedefinieerd
+
+            // Stel de achtergrondkleur in
+            panel.style.backgroundColor = parsedData.achtergrondkleur;
+
+            // Laad de elementen
+            const elements = parsedData.elementen;
+            elements.forEach(e => {
+                const el = drawElement(e.type, e.color, e.height, e.width, e.x, e.y);
+                panel.appendChild(el);
+                interactElement(el);
+            });
+
+            savedDiscription.value = parsedData.omschrijving;
+        }
+
+        document.getElementById('backButton').addEventListener('click', (event) => {
+            window.location.href = '@Url.Action("Index", "Storyboard")';
+            saveData();
+        });
+
+        function remove() {
+            const elements = document.querySelectorAll('.panel-item');
+            elements.forEach(el => pushToUndoStack({ type: 'remove', element: el }));
+
+            localStorage.removeItem(`SAVE_GAME_DATA_${@Model.SelectedPanel}`);
+            localStorage.removeItem(`DISCRIPTION_${@Model.SelectedPanel}`);
+            window.location.href = '@Url.Action("Index", "Storyboard")';
+        }
+
+        function undo() {
+            if (undoStack.length === 0) return;
+
+            const lastAction = undoStack.pop();
+            pushToRedoStack(lastAction);
+
+            if (lastAction.type === 'draw') {
+                lastAction.element.remove();
+            } else if (lastAction.type === 'move') {
+                lastAction.element.style.transform = 'translate(' + lastAction.prevX + 'px, ' + lastAction.prevY + 'px)';
+                lastAction.element.setAttribute('data-x', lastAction.prevX);
+                lastAction.element.setAttribute('data-y', lastAction.prevY);
+            } else if (lastAction.type === 'remove') {
+                panel.appendChild(lastAction.element);
+            }
+        }
+
+        function redo() {
+            if (redoStack.length === 0) return;
+
+            const lastAction = redoStack.pop();
+            pushToUndoStack(lastAction);
+
+            if (lastAction.type === 'draw') {
+                panel.appendChild(lastAction.element);
+            } else if (lastAction.type === 'move') {
+                lastAction.element.style.transform = 'translate(' + lastAction.element.getAttribute('data-x') + 'px, ' + lastAction.element.getAttribute('data-y') + 'px)';
+            } else if (lastAction.type === 'remove') {
+                lastAction.element.remove();
+            }
+        }
+    </script>
+</body>
+</html>

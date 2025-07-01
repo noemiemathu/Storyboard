@@ -1,0 +1,123 @@
+﻿@model Story
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="~/css/story.css" />
+</head>
+<body>
+    <div id="nav">
+        <button onclick="play()" name="afspelen" id="afspelen">Afspelen</button>
+        <input type="text" name="Title" id="titleInput" />
+        <form id="form" action="@Url.Action("Change", "Storyboard")" method="post">
+            <select id="nummer" name="nummer" onchange="createCanvases()">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+                <option value="7">7</option>
+                <option value="8">8</option>
+                <option value="9">9</option>
+                <option value="10">10</option>
+                <option value="11">11</option>
+                <option value="12">12</option>
+
+            </select>
+            <input type="hidden" name="Title" id="hiddenTitleInput" />
+        </form>
+    </div>
+    <br />
+    <br />
+    <br />
+    <br />
+    <br />
+    <br />
+    <div class="panel" id="container"></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Check if there's data in localStorage
+            const savedTitle = localStorage.getItem('title');
+            const savedNummer = localStorage.getItem('nummer');
+
+            if (savedTitle) {
+                document.getElementById('titleInput').value = savedTitle;
+                document.getElementById('hiddenTitleInput').value = savedTitle;
+            }
+
+            if (savedNummer) {
+                document.getElementById('nummer').value = savedNummer;
+                createCanvases();
+            }
+
+            // Save title to localStorage on change
+            document.getElementById('titleInput').addEventListener('input', function () {
+                const title = this.value;
+                localStorage.setItem('title', title);
+            });
+
+            // Save nummer to localStorage on change
+            document.getElementById('nummer').addEventListener('change', function () {
+                const nummer = this.value;
+                localStorage.setItem('nummer', nummer);
+                createCanvases();
+            });
+        });
+
+        function createCanvases() {
+            const number = document.getElementById("nummer").value;
+            const container = document.getElementById("container");
+            container.innerHTML = '';
+
+            for (let i = 0; i < number; i++) {
+                const savedGameData = localStorage.getItem(`SAVE_GAME_DATA_${i + 1}`);
+                let description = '';
+
+                if (savedGameData) {
+                    const parsedData = JSON.parse(savedGameData);
+                    description = parsedData.omschrijving || '';
+                }
+
+                const itemContainer = document.createElement('div');
+                itemContainer.className = 'item-container';
+
+                const newDescription = document.createElement('div');
+                newDescription.className = 'description';
+                newDescription.innerHTML = description;
+
+                const newCanvas = document.createElement('div');
+                newCanvas.className = 'canvas-panel';
+                newCanvas.innerHTML = `<a href="#" onclick="submitForm(${i + 1})">Panel ${i + 1}</a>`;
+
+                itemContainer.appendChild(newDescription);
+                itemContainer.appendChild(newCanvas);
+
+                container.appendChild(itemContainer);
+            }
+        }
+
+        function submitForm(selectedNumber) {
+            const form = document.getElementById('form');
+            let input = document.querySelector('input[name="selectedPanel"]');
+            if (!input) {
+                input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'selectedPanel';
+                form.appendChild(input);
+            }
+            input.value = selectedNumber;
+
+            const titleInput = document.getElementById('titleInput').value;
+            const hiddenTitleInput = document.getElementById('hiddenTitleInput');
+            hiddenTitleInput.value = titleInput;
+
+            form.submit();
+        }
+
+        function play() {
+            window.location.href = '@Url.Action("Show", "Storyboard")';
+        }
+    </script>
+</body>
+</html>

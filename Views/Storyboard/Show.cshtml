@@ -1,0 +1,89 @@
+﻿@model Story
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canvas Vormen Verplaatsen</title>
+    <link rel="stylesheet" href="~/css/show.css" />
+    <link rel="stylesheet" href="~/css/change.css" />
+    <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+</head>
+<body onload="playSavedGameData()">
+    <div id="nav">
+        <h1 id="Title"></h1>
+    </div>
+    <br />
+
+    <div class="editor">
+        <div class="place">
+            <textarea name="omschrijving" id="omschrijving" rows="13" cols="20"></textarea>
+        </div>
+
+        <div class="panel" id="canvas"></div>
+    </div>
+
+    <script>
+        var savedTitle = localStorage.getItem('title');
+        document.getElementById("Title").textContent = savedTitle;
+
+        const panel = document.getElementById("canvas");
+        const description = document.getElementById("omschrijving")
+        function playSavedGameData() {
+            panel.innerHTML = '';
+
+            const keys = Object.keys(localStorage);
+            const saveGameDataKeys = keys.filter(key => key.startsWith('SAVE_GAME_DATA_'));
+
+            saveGameDataKeys.sort();
+
+            let index = 0;
+
+            function showNextKey() {
+                if (index < saveGameDataKeys.length) {
+                    const key = saveGameDataKeys[index];
+                    const data = localStorage.getItem(key);
+
+                    panel.innerHTML = '';
+                    const dataContainer = document.createElement('div');
+                    dataContainer.className = 'panel';
+                    panel.appendChild(dataContainer);
+
+                    if (!data) return;
+
+                    const parsedData = JSON.parse(data);
+                    panel.style.backgroundColor = parsedData.achtergrondkleur;
+                    description.value = parsedData.omschrijving;
+
+                    const elements = parsedData.elementen;
+                    elements.forEach(e => {
+                        const el = drawElement(e.type, e.color, e.height, e.width, e.x, e.y);
+                        panel.appendChild(el);
+                    });
+
+                    index++;
+                    setTimeout(showNextKey, 3000);
+                } else {
+                    window.location.href = '@Url.Action("Index", "Storyboard")';
+                }
+            }
+            showNextKey();
+        }
+
+        function drawElement(type, color, height, width, x, y) {
+            var el = document.createElement('div');
+            el.className = 'panel-item panel-' + type;
+            el.style.cssText = 'background-color: ' + color + ';';
+            el.style.left = x + 'px';
+            el.style.top = y + 'px';
+            el.style.width = width + 'px';
+            el.style.height = height + 'px';
+            el.setAttribute('data-x', x);
+            el.setAttribute('data-y', y);
+            el.dataset.elType = type;
+            el.dataset.bgColor = color;
+            return el;
+        }
+    </script>
+</body>
+</html>
